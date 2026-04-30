@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_STORYCRAFT_API_URL ?? "/api";
+const API_BASE_URL = import.meta.env.VITE_STORYCRAFT_API_URL || "/api";
 
 export async function startStripeCheckout(planKey) {
   const response = await fetch(`${API_BASE_URL}/billing/create-checkout-session`, {

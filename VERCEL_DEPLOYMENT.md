@@ -7,26 +7,8 @@ Le fichier `vercel.json` configure :
 - `npm run build` comme commande de build.
 - `dist` comme dossier de sortie Vite.
 - Un fallback SPA vers `index.html`.
-- Une redirection `/api/*` vers le backend StoryCraft.
+- Des fonctions Vercel sous `/api/*`, notamment Stripe Checkout.
 - Un cache long pour les assets générés par Vite dans `/assets/*`.
-
-Remplacez cette destination dans `vercel.json` par votre URL backend réelle :
-
-```json
-"destination": "https://storycraft-api.example.com/api/:path*"
-```
-
-Exemples :
-
-```json
-"destination": "https://api.storycraft.ai/api/:path*"
-```
-
-ou :
-
-```json
-"destination": "https://storycraft-backend.onrender.com/api/:path*"
-```
 
 ## Variables d'environnement Vercel
 
@@ -42,21 +24,21 @@ VITE_FIREBASE_PROJECT_ID=
 VITE_FIREBASE_STORAGE_BUCKET=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
-```
-
-### Backend Stripe / OpenAI
-
-Ces variables ne doivent pas être dans le frontend si le backend est deploye ailleurs.
-Ajoutez-les dans les variables du projet backend.
-
-```env
-OPENAI_API_KEY=
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_PRICE_STARTER=
 STRIPE_PRICE_CREATOR=
 STRIPE_PRICE_PRO=
 ```
+
+### Backend OpenAI
+
+```env
+OPENAI_API_KEY=
+```
+
+Stripe est géré par la fonction Vercel `api/billing/create-checkout-session.js`.
+Les variables Stripe sont des variables serveur Vercel, elles ne doivent pas avoir le préfixe `VITE_`.
 
 ## Assets et logo
 
