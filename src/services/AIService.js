@@ -40,7 +40,8 @@ async function postToAI(endpoint, payload) {
   });
 
   if (!response.ok) {
-    throw new Error(`StoryCraft AI request failed: ${response.status}`);
+    const errorPayload = await response.json().catch(() => null);
+    throw new Error(errorPayload?.detail || errorPayload?.error || `StoryCraft AI request failed: ${response.status}`);
   }
 
   return response.json();
@@ -89,4 +90,21 @@ export async function generateConsistentVisuals(sceneDescription, characterRef) 
       "Keep a premium illustrated children's book style suitable for print PDF export."
     ]
   });
+}
+
+export async function generateSpeechAudio(text, language) {
+  const apiBaseUrl = getApiBaseUrl();
+  const response = await fetch(`${apiBaseUrl}/ai/audio/tts`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ text, language })
+  });
+
+  if (!response.ok) {
+    throw new Error(`StoryCraft TTS failed: ${response.status}`);
+  }
+
+  return response.blob();
 }

@@ -3,7 +3,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { generateBilingualScript, generateConsistentVisuals } from "../services/AIService.js";
+import { generateBilingualScript, generateConsistentVisuals, generateSpeechAudio } from "../services/AIService.js";
 import { saveStorybookDraft } from "../services/StorybookRepository.js";
 
 const storybookLanguages = [
@@ -34,6 +34,7 @@ export default function CreationDashboard() {
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isScriptLoading, setIsScriptLoading] = useState(false);
+  const [speakingKey, setSpeakingKey] = useState("");
   const [previewImageUrl, setPreviewImageUrl] = useState("");
   const [scriptPages, setScriptPages] = useState([]);
   const [form, setForm] = useState({
@@ -70,7 +71,7 @@ export default function CreationDashboard() {
       setScriptPages(script.pages ?? []);
       setStatus("Script bilingue généré et injecté dans l'aperçu.");
     } catch (error) {
-      setStatus("La génération du script a échoué. Vérifiez OPENAI_API_KEY et OPENAI_MODEL dans Vercel.");
+      setStatus(`La génération du script a échoué : ${error.message}`);
     } finally {
       setIsScriptLoading(false);
     }
@@ -97,19 +98,23 @@ export default function CreationDashboard() {
     }
   }
 
-  function speakPreviewText(text, language) {
-    if (!("speechSynthesis" in window)) {
-      setStatus("La lecture audio n'est pas supportée par ce navigateur.");
-      return;
+  async function speakPreviewText(text, language, key) {
+    setSpeakingKey(key);
+    setStatus("Préparation de l'audio IA...");
+
+    try {
+      const audioBlob = await generateSpeechAudio(text, language);
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audio.onended = () => URL.revokeObjectURL(audioUrl);
+      audio.onerror = () => URL.revokeObjectURL(audioUrl);
+      await audio.play();
+      setStatus("Lecture audio IA en cours.");
+    } catch {
+      setStatus("Audio IA indisponible. Vérifiez OPENAI_API_KEY, OPENAI_TTS_MODEL et les logs Vercel.");
+    } finally {
+      setSpeakingKey("");
     }
-
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = getSpeechLanguageCode(language);
-    utterance.rate = 0.92;
-    utterance.pitch = 1;
-    window.speechSynthesis.speak(utterance);
   }
 
   async function handlePremiumPdfExport() {
@@ -186,10 +191,10 @@ export default function CreationDashboard() {
   const firstScriptPage = scriptPages[0];
   const primaryPreviewText =
     firstScriptPage?.text1 ??
-    "Awa découvre une graine lumineuse et apprend que les histoires grandissent quand les enfants les partagent.";
+    "Cliquez sur « Générer le script » pour créer le texte français à partir de vos paramètres.";
   const secondaryPreviewText =
     firstScriptPage?.text2 ??
-    "Awa discovers a glowing seed and learns that stories grow when children share them.";
+    getTargetLanguagePlaceholder(form.secondLanguage);
 
   return (
     <section id="studio" className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
@@ -381,13 +386,15 @@ export default function CreationDashboard() {
               <PreviewText
                 language={form.language}
                 text={primaryPreviewText}
-                onSpeak={() => speakPreviewText(primaryPreviewText, form.language)}
+                isSpeaking={speakingKey === "primary"}
+                onSpeak={() => speakPreviewText(primaryPreviewText, form.language, "primary")}
               />
               <PreviewText
                 language={form.secondLanguage}
                 text={secondaryPreviewText}
                 muted
-                onSpeak={() => speakPreviewText(secondaryPreviewText, form.secondLanguage)}
+                isSpeaking={speakingKey === "secondary"}
+                onSpeak={() => speakPreviewText(secondaryPreviewText, form.secondLanguage, "secondary")}
               />
             </div>
           </div>
@@ -406,7 +413,7 @@ function Field({ label, children, wide = false }) {
   );
 }
 
-function PreviewText({ language, text, onSpeak, muted = false }) {
+function PreviewText({ language, text, onSpeak, isSpeaking = false, muted = false }) {
   return (
     <div className="flex items-start gap-3">
       <p
@@ -425,7 +432,7 @@ function PreviewText({ language, text, onSpeak, muted = false }) {
         title={`Haut-parleur ${language}`}
         className="no-print-pdf mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-700/30 bg-emerald-50 text-emerald-800 transition hover:bg-emerald-100"
       >
-        <Volume2 size={17} />
+        {isSpeaking ? <Loader2 className="animate-spin" size={17} /> : <Volume2 size={17} />}
       </button>
     </div>
   );
@@ -480,20 +487,19 @@ function getHtmlLanguageCode(language) {
   return languageCodes[language] ?? "und";
 }
 
-function getSpeechLanguageCode(language) {
-  const speechCodes = {
-    Français: "fr-FR",
-    Anglais: "en-US",
-    Wolof: "wo-SN",
-    Lingala: "ln-CD",
-    Bambara: "bm-ML",
-    Swahili: "sw-TZ",
-    Fon: "fon-BJ",
-    Éwé: "ee-TG",
-    Mina: "guw-TG"
+function getTargetLanguagePlaceholder(language) {
+  const placeholders = {
+    Anglais: "Click “Generate script” to create the English version from your settings.",
+    Éwé: "Zi « Générer le script » dzi be woawɔ Éʋegbe me nyagblɔɖi la tso wò nɔnɔmetatawo me.",
+    Mina: "Cliquez sur « Générer le script » pour créer la version Mina à partir de vos paramètres.",
+    Wolof: "Cliquez sur « Générer le script » pour créer la version Wolof à partir de vos paramètres.",
+    Lingala: "Cliquez sur « Générer le script » pour créer la version Lingala à partir de vos paramètres.",
+    Bambara: "Cliquez sur « Générer le script » pour créer la version Bambara à partir de vos paramètres.",
+    Swahili: "Bofya « Générer le script » ili kuunda maandishi ya Kiswahili.",
+    Fon: "Cliquez sur « Générer le script » pour créer la version Fon à partir de vos paramètres."
   };
 
-  return speechCodes[language] ?? getHtmlLanguageCode(language);
+  return placeholders[language] ?? "Cliquez sur « Générer le script » pour créer la version cible.";
 }
 
 async function capturePdfElement(element) {
