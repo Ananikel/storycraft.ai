@@ -46,12 +46,24 @@ async function postToAI(endpoint, payload) {
   return response.json();
 }
 
-export async function generateBilingualScript(theme, lang1, lang2) {
+export async function generateBilingualScript({
+  title,
+  theme,
+  visualStyle,
+  lang1,
+  lang2,
+  characterRef,
+  scene
+}) {
   return postToAI("/ai/script/bilingual", {
     model: "gpt-5.5",
+    title,
     theme,
+    visualStyle,
     lang1,
     lang2,
+    characterRef,
+    scene,
     promptInstructions: buildCulturalInstructions(lang1, lang2),
     output: {
       format: "storybook_script",

@@ -33,7 +33,9 @@ export default function CreationDashboard() {
   const [isImageLoading, setIsImageLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isScriptLoading, setIsScriptLoading] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [scriptPages, setScriptPages] = useState([]);
   const [form, setForm] = useState({
     title: "Le Jardin des Étoiles",
     theme: "Amitié, courage et découverte",
@@ -53,12 +55,24 @@ export default function CreationDashboard() {
 
   async function handleScriptGeneration() {
     setActiveStep(1);
+    setIsScriptLoading(true);
     setStatus("Préparation du script bilingue...");
     try {
-      await generateBilingualScript(form.theme, form.language, form.secondLanguage);
-      setStatus("Script bilingue généré.");
-    } catch {
-      setStatus("Service IA prêt à connecter au backend StoryCraft.");
+      const script = await generateBilingualScript({
+        title: form.title,
+        theme: form.theme,
+        visualStyle: form.style,
+        lang1: form.language,
+        lang2: form.secondLanguage,
+        characterRef: form.characterRef,
+        scene: form.scene
+      });
+      setScriptPages(script.pages ?? []);
+      setStatus("Script bilingue généré et injecté dans l'aperçu.");
+    } catch (error) {
+      setStatus("La génération du script a échoué. Vérifiez OPENAI_API_KEY et OPENAI_MODEL dans Vercel.");
+    } finally {
+      setIsScriptLoading(false);
     }
   }
 
@@ -169,9 +183,12 @@ export default function CreationDashboard() {
     }
   }
 
+  const firstScriptPage = scriptPages[0];
   const primaryPreviewText =
+    firstScriptPage?.text1 ??
     "Awa découvre une graine lumineuse et apprend que les histoires grandissent quand les enfants les partagent.";
   const secondaryPreviewText =
+    firstScriptPage?.text2 ??
     "Awa discovers a glowing seed and learns that stories grow when children share them.";
 
   return (
@@ -296,10 +313,11 @@ export default function CreationDashboard() {
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
               onClick={handleScriptGeneration}
+              disabled={isScriptLoading}
               className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-neon/60 bg-neon px-4 py-3 font-extrabold text-zinc-950 transition hover:bg-emerald-300"
             >
-              <Languages size={18} />
-              {t("generateScript")}
+              {isScriptLoading ? <Loader2 className="animate-spin" size={18} /> : <Languages size={18} />}
+              {isScriptLoading ? "Génération..." : t("generateScript")}
             </button>
             <button
               onClick={handleImageGeneration}
