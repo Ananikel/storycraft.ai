@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_STORYCRAFT_API_URL ?? "/api";
+import { getApiBaseUrl } from "./apiBaseUrl.js";
 
 const localLanguageGuidance = {
   "Éwé": {
@@ -30,7 +30,8 @@ function buildCulturalInstructions(lang1, lang2) {
 }
 
 async function postToAI(endpoint, payload) {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const apiBaseUrl = getApiBaseUrl();
+  const response = await fetch(`${apiBaseUrl}${endpoint}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"

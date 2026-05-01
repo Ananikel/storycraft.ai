@@ -1,7 +1,8 @@
-const API_BASE_URL = import.meta.env.VITE_STORYCRAFT_API_URL || "/api";
+import { getApiBaseUrl } from "./apiBaseUrl.js";
 
 export async function startStripeCheckout(planKey) {
-  const response = await fetch(`${API_BASE_URL}/billing/create-checkout-session`, {
+  const apiBaseUrl = getApiBaseUrl();
+  const response = await fetch(`${apiBaseUrl}/billing/create-checkout-session`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
